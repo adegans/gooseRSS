@@ -101,8 +101,7 @@ if(!$filtered) {
 	    }
 	
 		// Only add unique torrents
-		$key = array_search($hash, $filtered['items']);
-	    if(!isset($filtered['items'][$key])) {
+		if(!array_search($hash, array_column($filtered['items'], 'id'))) {
 			// Clean up season and episode number
 			if($season < 10) $season = '0'.$season;
 			if($episode < 10) $episode = '0'.$episode;
@@ -114,7 +113,7 @@ if(!$filtered) {
 			}
 			$content .= "<p><strong>Seeds:</strong> ".$seeders."<br /><strong>Size:</strong> ".human_filesize($size)."<br /><strong>Magnet:</strong> <a href=\"".$url_magnet."\">".$filename."</a><br /><strong>Hash:</strong> ".$hash."</p>";
 
-	        $filtered['items'][$hash] = array(
+	        $filtered['items'][] = array(
 	            'id' => $hash,
 	            'title' => $title,
 	            'link' => $url_magnet,

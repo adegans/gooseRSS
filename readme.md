@@ -10,18 +10,20 @@ Get notified when new TV Shows you follow become available through EZTV, ready f
 
 ## Installation
 
-You'll need a working (localhost) server that works with PHP 8 or newer. SimpleXML and common PHP modules need to work.
+Installation is simple and only takes a few minutes.  
+You'll need a working (localhost) server that works with PHP 8 or newer. SimpleXML and common PHP modules as standard, and that's it.
 
-Upload the files to your webserver, this can be in the document root or a subfolder.  
+- Download the [zip file](https://github.com/adegans/gooseRSS/archive/refs/heads/main.zip) from Github.
+
+- Extract and upload all files to your webserver, this can be in the document root or a subfolder.  
 For example https://domain.tld/gooserss/ or simply https://domain.tld/.
 
-Copy `default-config.php` to `config.php`.
+- Copy `default-config.php` to `config.php`.
 
-Open the `config.php` file and set your settings.  
-Each setting is briefly explained in the file.  
-There are a few settings for caching, what torrent quality to look for, and you set your shared access key here.
+- Open the `config.php` file and set your settings.  
+Each setting is briefly explained in the file. There are a few settings for caching, what torrent quality to look for, and you set your shared access key here.
 
-For testing you can enable the `ERROR_LOG` and `SUCCESS_LOG` settings.  
+- For testing you can enable the `ERROR_LOG` and `SUCCESS_LOG` settings.  
 This logs errors and successful runs to `error.log` and `success.log` in the root folder.
 
 ## Usage
@@ -40,7 +42,7 @@ https://yourdomain.com/eztvrss.php?access=the-access-key&id=tt12345678
 The TV Show you're subscribing to must be provided as a valid imdb id. This is a numeric value prefixed with 'tt'.  
 You can find imdb ids on the IMdB.com website and elsewhere. gooseRSS accepts the imdb id with or with the 'tt' prefix.
 
-**Using the feeds**  
+**Using the feeds:**  
 To subscribe, simply add the feeds you create to your favorite RSS Reader. Any decent RSS reader will work.  
 You can also load them in a browser and it should redirect to the feed reader.  
 

@@ -34,12 +34,12 @@ if(empty($handle)) {
 
 // Replace encoded @ with a real @
 if(substr($handle, 0, 3) == "%40") {
-	$handle = '@'.substr($handle, 3);
+	$handle = substr($handle, 3);
 }
 
 // Maybe add missing @ for the channel name
-if(substr($handle, 0, 1) != "@") {
-	$handle = '@'.$handle;
+if(substr($handle, 0, 1) == "@") {
+	$handle = substr($handle, 1);
 }
 
 // Fetch from cache or YouTube */
@@ -53,7 +53,7 @@ if(!$filtered) {
 	$xmlContent = file_get_contents('https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel_id, false, set_headers());
 
 	if($xmlContent === false) {
-		if(ERROR_LOG) logger('YT: Failed to fetch the feed for Channel ID `'.$handle.'`.');
+		if(ERROR_LOG) logger('YT: Failed to fetch the feed for Channel ID `@'.$handle.'`.');
 		exit;
 	}
 
@@ -62,7 +62,7 @@ if(!$filtered) {
 		preg_match('/<title>(Error\s[0-9]{3})/i', $xmlContent, $errors);
 		$error = (stripos($errors[1], "Error ")) ? $errors[1] : 'Unknown';
 
-		if(ERROR_LOG) logger('YT: Response error for Channel ID `'.$handle.'`, with error '.$error.'.');
+		if(ERROR_LOG) logger('YT: Response error for Channel ID `@'.$handle.'`, with error '.$error.'.');
 		exit;
 	}
 
@@ -111,8 +111,8 @@ if(!$filtered) {
 		}
 
 		// Only add unique videos
-		$key = array_search($video_id, $filtered['items']);
-		if(!isset($filtered['items'][$key])) {
+		
+		if(!array_search($video_id, array_column($filtered['items'], 'id'))) {
 			// Format description, if there is a description
 			if(strlen($description) > 0) {
 				$description = htmlspecialchars($description);
@@ -123,11 +123,7 @@ if(!$filtered) {
 			}
 
 			// Set up the embed url
-			$url_embed = http_build_query(array(
-				'vid' => $video_id, 
-				'id' => $handle
-			));
-			$url_embed = trim(MAIN_URL).'watch.php?'.$url_embed;
+			$url_embed = trim(MAIN_URL).'watch.php?vid='.$video_id.','.$handle;
 
 			// Sort out the description/item content
 			$content = '';

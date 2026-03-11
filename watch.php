@@ -14,25 +14,15 @@ require_once(__DIR__ . '/config.php');
 require_once(__DIR__ . '/functions.php');
 
 // Fetch the url parameters
-$handle = isset($_GET['id']) ? strtolower(sanitize($_GET['id'])) : '';
-$video_id = isset($_GET['vid']) ? sanitize($_GET['vid']) : '';
-
-// Replace encoded @ with a real @
-if(substr($handle, 0, 3) == "%40") {
-	$handle = '@'.substr($handle, 3);
-}
-
-// Maybe add missing @ for the channel name
-if(substr($handle, 0, 1) != "@") {
-	$handle = '@'.$handle;
-}
+$vid = isset($_GET['vid']) ? sanitize($_GET['vid']) : '';
+list($video_id, $handle) = explode(',', $vid);
 
 // Only cached videos can be watched here
 $channel = cache_get($handle, CACHE_YT_PREFIX, 31104000); // 360 days. We don't care for the cache age, just that it's there.
 $video = false;
 if(is_array($channel)) {
-	$key = array_search($video_id, $channel['items']);
-	if(isset($channel['items'][$key])) $video = $channel['items'][$key];
+	$key = array_search($video_id, array_column($channel['items'], 'id'));
+	if($key !== false) $video = $channel['items'][$key];
 }
 
 // Figure out the URL (for sharing this page)

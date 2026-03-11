@@ -131,9 +131,9 @@ function get_youtube_channel_id($handle) {
 	}
 
 	// Fetch the HTML
-	$html = @file_get_contents('https://www.youtube.com/'.$handle.'/videos', false, set_headers());
+	$html = @file_get_contents('https://www.youtube.com/@'.$handle.'/videos', false, set_headers());
 	if($html === false) {
-		if(ERROR_LOG) logger('YTRSS: Could not access the URL for Channel ID `'.$handle.'`.');
+		if(ERROR_LOG) logger('YTRSS: Could not access the URL for Channel ID `@'.$handle.'`.');
 		exit;
 	}
 
@@ -158,7 +158,7 @@ function get_youtube_channel_id($handle) {
 		}
 	}
 	
-	if(ERROR_LOG) logger('YTRSS: Channel ID not found in page source for Channel ID `'.$handle.'`.');
+	if(ERROR_LOG) logger('YTRSS: Channel ID not found in page source for Channel ID `@'.$handle.'`.');
 	exit;
 }
 

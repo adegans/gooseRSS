@@ -38,12 +38,12 @@ if(substr($handle, 0, 2) != "tt") {
 }
 
 // Fetch from cache or EZTV */
-$filtered = cache_get($handle, CACHE_EZTV_PREFIX, CACHE_EZTV_TTL);
+$filtered = cache_get($handle, CACHE_EZTV_PREFIX);
 
 if(!$filtered) {
 	// Fetch the Json content from eztv
 	$handle_numeric = str_ireplace('tt', '', $handle);
-	$jsonContent = file_get_contents(EZTV_API_URL.'?imdb_id='.$handle_numeric.'&limit=100', false, set_headers());
+	$jsonContent = make_request(EZTV_API_URL.'?imdb_id='.$handle_numeric.'&limit=100');
 
 	if($jsonContent === false) {
 		if(ERROR_LOG) logger('EZTV: Failed to fetch the feed for IMDb id `'.$handle.'`.');
@@ -111,7 +111,7 @@ if(!$filtered) {
 			    $content .= "<p><a href=\"".$url_magnet."\"><img src=\"".$thumbnail."\" /></a></p>";
 			}
 			$content .= "<p><strong>Seeds:</strong> ".$seeders."<br /><strong>Size:</strong> ".human_filesize($size)."<br /><strong>Magnet:</strong> <a href=\"".$url_magnet."\">".$filename."</a></p>";
-			$content .= "<p><strong>Links:</strong> <a href=\"https://www.imdb.com/title/".$handle."/\">".$filtered['channel_name']." IMDb page</a> / <a href=\"".$filtered['channel_url']."/\" title=\"Watch out for redirects and popups!\">EZTV ".$filtered['channel_name']." magnets</a><br /><strong>Magnet Hash:</strong> ".$hash."</p>";
+			$content .= "<p><strong>Links:</strong> <a href=\"https://www.imdb.com/title/".$handle."/\">IMDb page</a> / <a href=\"".$filtered['channel_url']."\" title=\"Watch out for redirects and popups!\">All EZTV magnets</a><br /><strong>Magnet Hash:</strong> ".$hash."</p>";
 
 	        $filtered['items'][] = array(
 	            'id' => $hash,
@@ -152,6 +152,7 @@ if(SUCCESS_LOG) logger('EZTV: Feed processed for `' . $filtered['channel_name'] 
 
 // Clean up
 unset($handle, $handle_numeric, $access_key, $filtered);
+cache_delete($handle, CACHE_EZTV_PREFIX, CACHE_EZTV_TTL);
 
 exit;
 ?>

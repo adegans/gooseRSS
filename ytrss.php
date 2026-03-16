@@ -43,33 +43,40 @@ if(substr($handle, 0, 1) == "@") {
 }
 
 // Fetch from cache or YouTube */
-$filtered = cache_get($handle, CACHE_YT_PREFIX, CACHE_YT_TTL);
+$filtered = cache_get($handle, CACHE_YT_PREFIX);
 
 if(!$filtered) {
+	$filtered = array();
+
 	// Find the Channel ID
-	$channel_id = get_youtube_channel_id($handle);
+	if(!isset($filtered['channel_id'])) {
+		$filtered['channel_id'] = get_youtube_channel_id($handle);
+	}
+
+	if($filtered['channel_id'] === false) {
+		if(ERROR_LOG) logger('YT: Missing Channel ID for `@'.$handle.'`.');
+		exit;
+	}
 
 	// Fetch the XML content from YouTube
-	$xmlContent = file_get_contents('https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel_id, false, set_headers());
+	$xmlContent = make_request('https://www.youtube.com/feeds/videos.xml?channel_id='.$filtered['channel_id']);
 
 	if($xmlContent === false) {
-		if(ERROR_LOG) logger('YT: Failed to fetch the feed for Channel ID `@'.$handle.'`.');
+		if(ERROR_LOG) logger('YT: Failed to fetch the feed for Channel `@'.$handle.'`.');
 		exit;
 	}
 
 	// Maybe some kind of error page?
 	if(stripos($xmlContent, '<!DOCTYPE html>') !== false) {
-		preg_match('/<title>(Error\s[0-9]{3})/i', $xmlContent, $errors);
-		$error = (stripos($errors[1], "Error ")) ? $errors[1] : 'Unknown';
+		preg_match('/<title>(.*?)<\/title>/si', $xmlContent, $errors);
+		$error = (isset($errors[1])) ? $errors[1] : 'Unknown';
 
-		if(ERROR_LOG) logger('YT: Response error for Channel ID `@'.$handle.'`, with error '.$error.'.');
+		if(ERROR_LOG) logger('YT: Response for Channel `@'.$handle.'`. Error: '.$error.'.');
 		exit;
 	}
 
 	// Load the XML
 	$xml = new SimpleXMLElement($xmlContent);
-
-	$filtered = array();
 
 	// Get Channel meta information
 	$filtered['channel_name'] = sanitize($xml->title);
@@ -111,7 +118,6 @@ if(!$filtered) {
 		}
 
 		// Only add unique videos
-		
 		if(!array_search($video_id, array_column($filtered['items'], 'id'))) {
 			// Format description, if there is a description
 			if(strlen($description) > 0) {
@@ -122,8 +128,13 @@ if(!$filtered) {
 				$description = preg_replace('/(https?:\/\/(?:www\.)?(?:[a-zA-Z0-9-.]{2,256}\.[a-z]{2,20})(\:[0-9]{2,4})?(?:\/[a-zA-Z0-9@:%_\+.,~#"\'!?&\/\/=\-*]+|\/)?)/ims', '<a href="$1" target="_blank">$1</a>', $description);
 			}
 
+			$url_embed = http_build_query(array(
+				'vid' => $video_id,
+				'ch' => $handle
+			));
+
 			// Set up the embed url
-			$url_embed = trim(MAIN_URL).'watch.php?vid='.$video_id.','.$handle;
+			$url_embed = trim(MAIN_URL).'watch.php?'.$url_embed;
 
 			// Sort out the description/item content
 			$content = '';
@@ -138,7 +149,8 @@ if(!$filtered) {
 				'title' => $title,
 				'link' => $url_embed,
 				'date_released' => $published,
-				'description' => $content
+				'description' => $content,
+				'thumbnail' => $thumbnail
 		    );
 		}
 
@@ -172,6 +184,7 @@ if(SUCCESS_LOG) logger('YT: Feed processed for Channel ID `' . $filtered['channe
 
 // Clean up
 unset($handle, $access_key, $filtered);
+cache_delete($handle, CACHE_YT_PREFIX, CACHE_YT_TTL);
 
 exit;
 ?>

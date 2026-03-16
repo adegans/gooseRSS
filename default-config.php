@@ -22,7 +22,7 @@ define('MAIN_URL', 'https://example.com/gooserss/');
 
 // Access key to be used in the URLs.
 // This access key is not super secret, but it helps against surface level attacks and general misuse.
-// Treat it as a shared pincode. Use alphanumeric characters and dashes only. Length is up to you, minimum is 1 character long.
+// Treat it as a shared secret. Use alphanumeric characters and dashes only. Length is up to you, minimum is 1 character long.
 define('ACCESS', '1234-2468-1357');
 
 // Which torrent video qualities to look for? 
@@ -36,11 +36,10 @@ define('QUALITY_FILTER', array('720', '1080', '2160'));
 define('EZTV_API_URL', 'https://eztvx.to/api/get-torrents');
 
 // Set a user-agent for gooseRSS to identify as. Usually the default works fine. Firefox is nice and neutral.
-// The services you use prefer to deal with browser, so we need to pretend to be a browser.
+// The services you use prefer to deal with a browser, so we need to pretend to be a browser.
 define('USER_AGENT', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:142.0) Gecko/20100101 Firefox/142.0');
 
-// Where to keep the cache (without trailing slash).
-// By default the cache is for 12 hours, this can be altered in the ytrss.php and eztvrss.php.
+// Where to keep the cache (without a trailing slash).
 define('CACHE_DIR', '/cache');
 
 // Cache lifetime in seconds (3600 = 1 hour, 86400 = 1 day).

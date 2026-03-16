@@ -14,8 +14,8 @@ require_once(__DIR__ . '/config.php');
 require_once(__DIR__ . '/functions.php');
 
 // Fetch the url parameters
-$vid = isset($_GET['vid']) ? sanitize($_GET['vid']) : '';
-list($video_id, $handle) = explode(',', $vid);
+$handle = isset($_GET['ch']) ? sanitize($_GET['ch']) : '';
+$video_id = isset($_GET['vid']) ? sanitize($_GET['vid']) : '';
 
 // Only cached videos can be watched here
 $channel = cache_get($handle, CACHE_YT_PREFIX, 31104000); // 360 days. We don't care for the cache age, just that it's there.
@@ -36,20 +36,24 @@ $current_url .= '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>gooseRSS: <?php echo $video['title']; ?></title>
+	<title>GooseRSS: <?php echo $video['title']; ?></title>
 	<link rel="stylesheet" href="./assets/embed-simple.css">
 
-	<meta name="description" content="<?php echo $channel['channel_name']; ?>: <?php echo $video['title']; ?>" />
-	<meta name="generator" content="gooseRSS" />
+	<meta name="description" content="<?php echo $video['title']; ?> by <?php echo $channel['channel_name']; ?>" />
+	<meta name="generator" content="GooseRSS - Youtube Embeds" />
 
 	<meta property="og:type" content="website" />
 	<meta property="og:locale" content="en_US" />
 	<meta property="og:url" content="<?php echo $current_url; ?>" />
-	<meta property="og:site_name" content="gooseRSS Watch Page" />
-	<meta property="og:title" content="Watch this video from <?php echo $channel['channel_name']; ?>" />
+	<meta property="og:site_name" content="GooseRSS - Youtube Embeds" />
+	<meta property="og:title" content="Watch this embedded video:" />
 	<meta property="og:description" content="<?php echo $video['title']; ?>" />
-	<meta property="og:image" content="https://img.youtube.com/vi/<?php echo $video_id; ?>/0.jpg" />
-	<meta property="og:image:alt" content="<?php echo $video['title']; ?>" />
+	<?php
+	if(isset($video['thumbnail'])) {
+		echo '<meta property="og:image" content="'.$video['thumbnail'].'" />';
+		echo '<meta property="og:image:alt" content="'.$video['thumbnail'].'" />';
+	}
+	?>
 </head>
 
 <body id="top">
@@ -63,7 +67,9 @@ $current_url .= '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 			<?php if($video AND !empty($video_id)) { ?>
 			<div class="videowrap">
 				<iframe 
-					src="https://www.youtube-nocookie.com/embed/<?php echo $video_id; ?>" 
+					id="player" 
+					type="text/html"
+					src="https://www.youtube.com/embed/<?php echo $video_id; ?>" 
 					title="YouTube video player" 
 					frameborder="0" 
 					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
@@ -83,6 +89,5 @@ $current_url .= '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 	</footer>
 
 	<script src="./assets/embed-keepalive.js"></script>
-
 </body>
 </html>

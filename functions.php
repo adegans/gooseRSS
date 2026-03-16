@@ -22,19 +22,23 @@ function cache_set($key, $data, $prefix) {
 	@file_put_contents($file, serialize($data));
 }
 
-function cache_get($key, $prefix, $ttl) {
+function cache_get($key, $prefix) {
 	$file = __DIR__ . CACHE_DIR . '/' . $prefix . md5($key) . '.cache';
 
 	if(!is_file($file)) {
 		return false;
 	}
-	
-	if(filemtime($file) < (time() - $ttl)) {
-		@unlink($file);
-		return false;
-	}
 
 	return unserialize(file_get_contents($file));
+}
+
+function cache_delete($key, $prefix, $ttl) {
+	$file = __DIR__ . CACHE_DIR . '/' . $prefix . md5($key) . '.cache';
+
+	// Delete if expired
+	if(filemtime($file) < (time() - $ttl)) {
+		unlink($file);
+	}
 }
 
 /* ------------------------------------------------------------------------ */
@@ -91,49 +95,60 @@ function logger($error_message, $error = true) {
 }
 
 /* ------------------------------------------------------------------------ */
-/* SET REQUEST HEADERS														*/
+/* DO CURL REQUEST															*/
 /* ------------------------------------------------------------------------ */
-function set_headers() {
+function make_request($url) {	
     $headers = array(
-        'User-Agent: '.trim(USER_AGENT),
-        'Accept: text/html, application/xhtml+xml, application/xml;q=0.8, application/json;q=0.9, */*;q=0.7',
-        'Accept-Language: en-US,en;q=0.5',
-        'Upgrade-Insecure-Requests: 1',
-        'Sec-Fetch-Dest: document',
-        'Sec-Fetch-Mode: navigate',
-        'Sec-Fetch-Site: none',
-        'Pragma: no-cache',
-        'Cache-Control: no-cache',
+		'Accept: text/html, application/xhtml+xml, application/xml;q=0.8, application/json;q=0.9, */*;q=0.7',
+		'Accept-Language: en-US,en;q=0.5',
+		'Accept-Encoding: gzip, deflate',
+// 		'Connection: keep-alive',
+		'Upgrade-Insecure-Requests: 1',
+		'User-Agent: '.trim(USER_AGENT),
+		'Sec-Fetch-Dest: document',
+		'Sec-Fetch-Mode: navigate',
+		'Sec-Fetch-Site: none',
+//		'Pragma: no-cache',
+//		'Cache-Control: no-cache',
     );
 
-    $options = array(
-        'http' => array(
-            'method'  => 'GET',
-            'header'  => implode("\r\n", $headers),
-            'ignore_errors' => true   // read body also on 4xx/5xx
-        )
-    );
-    return stream_context_create($options);
+	$ch = curl_init();
 
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_HTTPGET, 1); // Redundant? Probably...
+	curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS | CURLPROTO_HTTP);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+	curl_setopt($ch, CURLOPT_ENCODING, 'gzip,deflate');
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+	curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS | CURLPROTO_HTTP);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+	curl_setopt($ch, CURLOPT_VERBOSE, false);
+
+	// execute
+	if(!$response = curl_exec($ch)) {
+	    // some kind of an error happened
+		if(ERROR_LOG) logger('cURL Error: '.curl_error($ch));
+	    curl_close($ch);
+		
+		return false;
+	}
+
+	curl_close($ch);
+	return $response;
 }
 
 /* ------------------------------------------------------------------------ */
 /* FIND YOUTUBE CHANNEL ID													*/
 /* ------------------------------------------------------------------------ */
 function get_youtube_channel_id($handle) {	
-	// Alter the prefix to indicate Channel ID's
-	$prefix = CACHE_YT_PREFIX . 'cid_';
-	
-	// See if there is a cached Channel ID
-	$cached_id = cache_get($handle, $prefix, 31104000); // Cache for 360 days
-	if($cached_id) {
-		return $cached_id;
-	}
-
 	// Fetch the HTML
-	$html = @file_get_contents('https://www.youtube.com/@'.$handle.'/videos', false, set_headers());
+	$html = make_request('https://www.youtube.com/@'.$handle.'/videos');
+
 	if($html === false) {
-		if(ERROR_LOG) logger('YTRSS: Could not access the URL for Channel ID `@'.$handle.'`.');
+		if(ERROR_LOG) logger('YT: Could not access the URL for Channel `@'.$handle.'`.');
 		exit;
 	}
 
@@ -153,13 +168,11 @@ function get_youtube_channel_id($handle) {
 	// Find, cache and return the Channel ID
 	foreach($patterns as $pattern) {
 		if(preg_match($pattern, $html, $matches)) {
-			cache_set($handle, $matches[1], $prefix);
 			return $matches[1];
 		}
 	}
 	
-	if(ERROR_LOG) logger('YTRSS: Channel ID not found in page source for Channel ID `@'.$handle.'`.');
-	exit;
+	return false;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -178,7 +191,7 @@ function generate_rss_feed($filtered, $now) {
 	foreach($filtered['items'] as $item) {
 		$rss .= "    <item>\n";
 		$rss .= "      <title>".$item['title']."</title>\n";
-		$rss .= "      <link>".$item['link']."</link>\n";
+		$rss .= "      <link><![CDATA[".$item['link']."]]></link>\n";
 		$rss .= "      <pubDate>".date("r", $item['date_released'])."</pubDate>\n";
 		$rss .= "      <guid isPermaLink=\"false\">".md5($item['link'])."</guid>\n";
 		$rss .= "      <description><![CDATA[".$item['description']."]]></description>\n";

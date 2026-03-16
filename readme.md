@@ -64,4 +64,3 @@ If it's not there you can get it from the channel details or the channel url in 
 - The Watch Page on mobile uses a technology called Wake Lock, this prevents the device screen from sleeping while you watch a video.
 - All TV Shows are presented as a Magnet link.
 - The Watch Page can only embed videos that are have their info in the cache but ignores the cache expiry.
-

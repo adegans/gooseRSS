@@ -151,8 +151,8 @@ echo generate_rss_feed($filtered, $now);
 if(SUCCESS_LOG) logger('EZTV: Feed processed for `' . $filtered['channel_name'] . '`.', false);
 
 // Clean up
-unset($handle, $handle_numeric, $access_key, $filtered);
 cache_delete($handle, CACHE_EZTV_PREFIX, CACHE_EZTV_TTL);
+unset($handle, $handle_numeric, $access_key, $filtered);
 
 exit;
 ?>

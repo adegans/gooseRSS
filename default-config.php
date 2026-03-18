@@ -2,6 +2,12 @@
 /* ---------------------------------------------------------------------------
  * gooseRSS the YouTube and EZTV RSS Generator
  *
+ * Generate links to subscribe to:
+ *   https://yourdomain.com/subscribe.php?access=the-access-key
+ *   Submit the YouTube channel handle that you want to subscribing to.
+ *   Or, for TV Shows enter a valid IMDb ID in the correct field.
+ *   This page can be bookmarked for ease of use.
+ *
  * Follow YouTube channels:
  *   https://yourdomain.com/ytrss.php?access=the-access-key&id=channel_handle
  *   The YouTube channel you're subscribing to must be a valid channel name/handle. This is the username prefixed with or without an '@'.

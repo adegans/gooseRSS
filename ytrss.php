@@ -32,12 +32,12 @@ if(empty($handle)) {
 	exit;
 }
 
-// Replace encoded @ with a real @
+// Remove encoded @
 if(substr($handle, 0, 3) == "%40") {
 	$handle = substr($handle, 3);
 }
 
-// Maybe add missing @ for the channel name
+// Remove @
 if(substr($handle, 0, 1) == "@") {
 	$handle = substr($handle, 1);
 }
@@ -90,13 +90,8 @@ if(!$filtered) {
 		$yt = $entry->children($namespaces['yt']);
 		$media = $entry->children($namespaces['media']);
 
-		// Skip/ignore live videos
-		$status = (!isset($yt->status)) ? sanitize($yt->status) : '';
-		if(!empty($status) AND $status === 'live') {
-			continue;
-		}
-
 		// Find basic information
+		$status = (isset($yt->status)) ? sanitize($yt->status) : '';
 		$video_id = (isset($yt->videoId)) ? sanitize($yt->videoId) : '';
 		$title = (isset($entry->title)) ? sanitize($entry->title) : '';
 		$video_url = (isset($entry->link['href'])) ? sanitize($entry->link['href']) : '#';
@@ -105,15 +100,15 @@ if(!$filtered) {
 		// Find additional information
 		$thumbnail = (isset($media->group->thumbnail->attributes()->url)) ? sanitize($media->group->thumbnail->attributes()->url) : '';
 		$description = (isset($media->group->description)) ? sanitize($media->group->description, true) : '';
+		$duration = (isset($media->group->content->attributes()->duration)) ? sanitize($media->group->content->attributes()->duration) : 0;
 
-		// Ignore if video id is missing
-		// Ignore if title is missing
-		if(empty($video_id) OR empty($title)) {
+		// Ignore if video id or title is missing, and ignore ads
+		if(empty($video_id) OR empty($title) OR strpos($video_id, 'googleads') !== false) {
 			continue;
 		}
-	
-		// Ignore ads
-		if(strpos($video_id, 'googleads') !== false) {
+		
+		// Skip/ignore live and premiere videos until they're published
+		if(!empty($status) AND ($status === 'live' OR ($status === 'upcoming' AND $duration < 1))) {
 			continue;
 		}
 
@@ -142,7 +137,12 @@ if(!$filtered) {
 			    $content .= "<p><a href=\"".$url_embed."\"><img src=\"".$thumbnail."\" /></a></p>";
 			}
 			$content .= "<p>Video links: <a href=\"".$url_embed."\">Watch embedded in browser</a> or <a href=\"".$video_url."\">watch on YouTube</a>.</p>";
-			$content .= $description;
+			if($duration > 0) {
+				$content .= "<p>Length: ".human_timestamp($duration)."</p>";
+			}
+			if(strlen($description) > 0) {
+				$content .= $description;
+			}
 
 		    $filtered['items'][] = array(
 			    'id' => $video_id,
@@ -183,8 +183,8 @@ echo generate_rss_feed($filtered, $now);
 if(SUCCESS_LOG) logger('YT: Feed processed for Channel ID `' . $filtered['channel_name'] . '`.', false);
 
 // Clean up
-unset($handle, $access_key, $filtered);
 cache_delete($handle, CACHE_YT_PREFIX, CACHE_YT_TTL);
+unset($handle, $access_key, $filtered);
 
 exit;
 ?>

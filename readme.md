@@ -28,7 +28,18 @@ This logs errors and successful runs to `error.log` and `success.log` in the roo
 
 ## Usage
 
-**For YouTube:**  
+**Generate the RSS links you subscribe to:**
+Visit: https://yourdomain.com/subscribe.php?access=the-access-key  
+This page can be bookmarked for ease of use.
+
+Enter the YouTube Handle or, for TV Shows enter a valid IMDb ID in the correct field.  
+Press the Generate button and a link is generated for you to subscribe to.
+
+**Using RSS feeds:**  
+To subscribe to a RSS feed you need a RSS reader or an RSS service online. Add the feeds you create to your favorite RSS Reader.  
+For example NetNewsWire, Vienna or a (self)hosted service like FreshRSS, Nextcloud News or TinyTinyRSS. Any decent RSS reader will work.
+
+**Make a feed yourself for YouTube:**  
 https://yourdomain.com/ytrss.php?access=the-access-key&id=channel_handle
 
 The YouTube channel you're subscribing to must be a valid Channel Name/Handle. This is the username prefixed with an '@'.  
@@ -36,16 +47,11 @@ For gooseRSS, remove the '@' and use the plain name as the ID.
 
 The Channel ID is usually visible on the main channel's page, next to the channel thumbnail.
 
-**For EZTV Magnet links (TV Shows):**  
+**Make a feed yourself for EZTV Magnet links (TV Shows):**  
 https://yourdomain.com/eztvrss.php?access=the-access-key&id=tt12345678
 
 The TV Show you're subscribing to must be provided as a valid imdb id. This is a numeric value prefixed with 'tt'.  
 You can find imdb ids on the IMdB.com website and elsewhere. gooseRSS accepts the imdb id with or with the 'tt' prefix.
-
-**Using the feeds:**  
-To subscribe, simply add the feeds you create to your favorite RSS Reader. Any decent RSS reader will work.  
-You can also load them in a browser and it should redirect to the feed reader.  
-
 
 ### Finding the YouTube Channel Handle.
 
@@ -57,10 +63,8 @@ You can find it on most Channel main pages below the header image.
 If it's not there you can get it from the channel details or the channel url in your browser.
 
 ## Technical Stuff
-- All feeds are cached as serialized files. 
-- The cache default is 6 hours for YouTube and 24 hours for EZTV.
-- Each feed is compatible with the `304 NOT MODIFIED` header for reduced traffic.
-- The Watch Page has a nice dark layout to reduce eye strain.
-- The Watch Page on mobile uses a technology called Wake Lock, this prevents the device screen from sleeping while you watch a video.
+- All feeds are cached as a serialized array in files. One file per feed.
+- Each feed is compatible with the `HTTP_IF_MODIFIED_SINCE` (or `304 NOT MODIFIED`) header for reduced traffic.
 - All TV Shows are presented as a Magnet link.
-- The Watch Page can only embed videos that are have their info in the cache but ignores the cache expiry.
+- The Watch Page can only embed videos that are have their info in the cache.
+- Live and Premiere videos are ignored until they become watchable. This works on the assumption that the released video will still be available in the feed (last 15 videos) when that happens.

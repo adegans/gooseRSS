@@ -3,7 +3,6 @@
 // ------------------------------------------------------------------
 // Check if tab has focus and if so, prevent screen from sleeping while playing longer videos. 
 // Wake Lock is released when tab goes out of focus or is closed.
-// To be included with embed.php for the YoutubeEmbedBridge for RSS Bridge
 // ------------------------------------------------------------------
 // Version: 1.0
 // ------------------------------------------------------------------

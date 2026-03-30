@@ -49,7 +49,7 @@ cache_delete(CACHE_YT_PREFIX, CACHE_YT_TTL);
 $filtered = cache_get($handle, CACHE_YT_PREFIX, CACHE_YT_TTL);
 
 if(!$filtered) {
-	$filtered = array();
+	$filtered = $response_errors = array();
 
 	// Find the Channel ID
 	if(!isset($filtered['channel_id'])) {
@@ -58,7 +58,7 @@ if(!$filtered) {
 
 	if($filtered['channel_id'] === false) {
 		if(ERROR_LOG) logger('YT: Missing Channel ID for `@'.$handle.'`.');
-		exit;
+		$response_errors['id'] = 'Missing Channel ID for `@'.$handle.'`';
 	}
 
 	// Fetch the XML content from YouTube
@@ -66,13 +66,13 @@ if(!$filtered) {
 
 	// Handle errors
 	if($response['errno'] !== 0) {
-		if(ERROR_LOG) logger('cURL Error: Channel ID `@'.$handle.'`. Error: '.$response['error']);
-		exit;
+		if(ERROR_LOG) logger('CURL: Channel ID `@'.$handle.'`. Error: '.$response['error'].'.');
+		$response_errors['curl'] = 'Channel ID `@'.$handle.'`. Error: '.$response['error'].'.';
 	} 
 	
 	if($response['code'] !== 200) {
-		if(ERROR_LOG) logger('YT: Failed to fetch the feed for channel `@'.$handle.'`. Error: '.$response['code'].'.');
-		exit;
+		if(ERROR_LOG) logger('YT: Could not fetch feed for `@'.$handle.'`. Error: '.$response['code'].'.');
+		$response_errors['feed_response'] = 'Could not fetch feed for `@'.$handle.'`. Error: '.$response['code'].'.';
 	}
 
 	// Finally - Maybe some kind of error page?
@@ -80,90 +80,106 @@ if(!$filtered) {
 		preg_match('/<title>(.*?)<\/title>/si', $response['body'], $errors);
 		$error = (isset($errors[1])) ? $errors[1] : 'Unknown';
 
-		if(ERROR_LOG) logger('YT: Failed to fetch the feed for channel `@'.$handle.'`. Error: '.$error.'.');
-		exit;
+		if(ERROR_LOG) logger('YT: Invalid XML for channel `@'.$handle.'`. Error: '.$error.'.');
+		$response_errors['invalid_content'] = 'Invalid XML for channel `@'.$handle.'`. Error: '.$error.'.';
 	}
 
-	// Load the XML
-	$xml = new SimpleXMLElement($response['body']);
-
-	// Get Channel meta information
-	$filtered['channel_name'] = sanitize($xml->title);
-	$filtered['channel_url'] = sanitize($xml->author->uri)."/videos";
-	$filtered['items'] = array();
-
-	// Loop through each item
-	foreach($xml->entry as $entry) {
-		// Get all data/meta data
-		$namespaces = $entry->getNameSpaces(true);
-		$yt = $entry->children($namespaces['yt']);
-		$media = $entry->children($namespaces['media']);
-
-		// Find basic information
-		$status = (isset($yt->status)) ? sanitize((string)$yt->status) : '';
-		$video_id = (isset($yt->videoId)) ? sanitize((string)$yt->videoId) : '';
-		$title = (isset($entry->title)) ? sanitize((string)$entry->title) : '';
-		$video_url = (isset($entry->link['href'])) ? sanitize((string)$entry->link['href']) : '#';
-		$published = (isset($entry->published)) ? strtotime(sanitize((string)$entry->published)) : 0;
-
-		// Find additional information
-		$thumbnail = (isset($media->group->thumbnail->attributes()->url)) ? sanitize((string)$media->group->thumbnail->attributes()->url) : '';
-		$description = (isset($media->group->description)) ? sanitize((string)$media->group->description, true) : '';
-
-		// Ignore if video id or title is missing, and ignore ads
-		if(empty($video_id) OR empty($title) OR strpos($video_id, 'googleads') !== false) {
-			continue;
-		}
-		
-		// Skip/ignore live and premiere videos until they're published
-		if(!empty($status) AND ($status == 'live' OR $status == 'upcoming')) {
-			continue;
-		}
-
-		// Only add unique videos
-		if(!array_search($video_id, array_column($filtered['items'], 'id'))) {
-			// Format description, if there is a description
-			if(strlen($description) > 0) {
-				$description = htmlspecialchars($description);
-				$description = nl2br($description);
-				
-				// Regex came from repo BetterVideoRss of VerifiedJoseph.
-				$description = preg_replace('/(https?:\/\/(?:www\.)?(?:[a-zA-Z0-9-.]{2,256}\.[a-z]{2,20})(\:[0-9]{2,4})?(?:\/[a-zA-Z0-9@:%_\+.,~#"\'!?&\/\/=\-*]+|\/)?)/ims', '<a href="$1" target="_blank">$1</a>', $description);
+	if(empty($response_errors)) {
+		// Load the XML
+		$xml = new SimpleXMLElement($response['body']);
+	
+		// Get Channel meta information
+		$filtered['channel_name'] = (strlen($xml->title) > 0) ? sanitize($xml->title) : $handle;
+		$filtered['channel_url'] = (strlen($xml->author->uri) > 0) ? sanitize($xml->author->uri)."/videos" : "#";
+		$filtered['items'] = array();
+	
+		// Loop through each item
+		foreach($xml->entry as $entry) {
+			// Get all data/meta data
+			$namespaces = $entry->getNameSpaces(true);
+			$yt = $entry->children($namespaces['yt']);
+			$media = $entry->children($namespaces['media']);
+	
+			// Find basic information
+			$status = (isset($yt->status)) ? sanitize((string)$yt->status) : "";
+			$video_id = (isset($yt->videoId)) ? sanitize((string)$yt->videoId) : "";
+			$title = (isset($entry->title)) ? sanitize((string)$entry->title) : "";
+			$video_url = (isset($entry->link['href'])) ? sanitize((string)$entry->link['href']) : "#";
+			$published = (isset($entry->published)) ? strtotime(sanitize((string)$entry->published)) : 0;
+	
+			// Find additional information
+			$thumbnail = (isset($media->group->thumbnail->attributes()->url)) ? sanitize((string)$media->group->thumbnail->attributes()->url) : "";
+			$description = (isset($media->group->description)) ? sanitize((string)$media->group->description, true) : "";
+	
+			// Ignore if video id or title is missing, and ignore ads
+			if(empty($video_id) OR empty($title) OR strpos($video_id, 'googleads') !== false) {
+				continue;
 			}
-
-			$url_embed = http_build_query(array(
-				'vid' => $video_id,
-				'ch' => $handle
-			));
-
-			// Set up the embed url
-			$url_embed = trim(MAIN_URL).'watch.php?'.$url_embed;
-
-			// Sort out the description/item content
-			$content = '';
-		    if(!empty($thumbnail)) {
-			    $content .= "<p><a href=\"".$url_embed."\"><img src=\"".$thumbnail."\" /></a></p>";
+			
+			// Skip/ignore live and premiere videos until they're published
+			if(!empty($status) AND ($status == 'live' OR $status == 'upcoming')) {
+				continue;
 			}
-			$content .= "<p>Video links: <a href=\"".$url_embed."\">Watch embedded in browser</a> or <a href=\"".$video_url."\">watch on YouTube</a>.</p>";
-			if(strlen($description) > 0) {
-				$content .= $description;
+	
+			// Only add unique videos
+			if(!array_search($video_id, array_column($filtered['items'], 'id'))) {
+				// Format description, if there is a description
+				if(strlen($description) > 0) {
+					$description = htmlspecialchars($description);
+					$description = nl2br($description);
+					
+					// Regex came from repo BetterVideoRss of VerifiedJoseph.
+					$description = preg_replace('/(https?:\/\/(?:www\.)?(?:[a-zA-Z0-9-.]{2,256}\.[a-z]{2,20})(\:[0-9]{2,4})?(?:\/[a-zA-Z0-9@:%_\+.,~#"\'!?&\/\/=\-*]+|\/)?)/ims', '<a href="$1" target="_blank">$1</a>', $description);
+				}
+	
+				$url_embed = http_build_query(array(
+					'vid' => $video_id,
+					'ch' => $handle
+				));
+	
+				// Set up the embed url
+				$url_embed = trim(MAIN_URL)."watch.php?".$url_embed;
+	
+				// Sort out the description/item content
+				$content = '';
+			    if(!empty($thumbnail)) {
+				    $content .= "<p><a href=\"".$url_embed."\"><img src=\"".$thumbnail."\" /></a></p>";
+				}
+				$content .= "<p>Video links: <a href=\"".$url_embed."\">Watch embedded in browser</a> or <a href=\"".$video_url."\">watch on YouTube</a>.</p>";
+				if(strlen($description) > 0) {
+					$content .= $description;
+				}
+	
+			    $filtered['items'][] = array(
+					'title' => $title,
+					'link' => $url_embed,
+					'date_released' => $published,
+					'description' => $content,
+					'thumbnail' => $thumbnail
+			    );
 			}
-
-		    $filtered['items'][] = array(
-			    'id' => $video_id,
-				'title' => $title,
-				'link' => $url_embed,
-				'date_released' => $published,
-				'description' => $content,
-				'thumbnail' => $thumbnail
-		    );
+	
+			unset($entry, $namespaces, $yt, $media, $status, $video_id, $title, $video_url, $published, $thumbnail, $description, $url_embed, $content);
 		}
+	
+		// Sort by date_released DESC */
+		usort($filtered['items'], fn($a, $b) => $b['date_released'] <=> $a['date_released']);
+	} else {
+		$content = "<p>Unfortunately something went wrong getting the feed. Usually this resolves itself within a few hours!<br /><small>YouTube feeds often do not work between 5:00-12:00AM GMT (London, UK time).</small></p>";
+		$content .= "<p>";
+		foreach($response_errors as $key => $text) {
+			$content .= $key.": ".$text."</br>";
+		}
+		$content .= "</p>";
 
-		unset($entry, $namespaces, $yt, $media, $status, $video_id, $title, $video_url, $published, $thumbnail, $description, $url_embed, $content);
+	    $filtered['items'][] = array(
+			'title' => 'Error',
+			'link' => '',
+			'date_released' => time(),
+			'description' => $content,
+			'thumbnail' => ''
+	    );
 	}
-
-	// Sort by date_released DESC */
-	usort($filtered['items'], fn($a, $b) => $b['date_released'] <=> $a['date_released']);
 
 	cache_set($handle, $filtered, CACHE_YT_PREFIX);
 }

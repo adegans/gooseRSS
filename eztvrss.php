@@ -44,99 +44,115 @@ cache_delete(CACHE_EZTV_PREFIX, CACHE_EZTV_TTL);
 $filtered = cache_get($handle, CACHE_EZTV_PREFIX, CACHE_EZTV_TTL);
 
 if(!$filtered) {
+	$filtered = $response_errors = array();
+
 	// Fetch the Json content from eztv
 	$handle_numeric = str_ireplace('tt', '', $handle);
 	$response = make_request(EZTV_API_URL.'?imdb_id='.$handle_numeric.'&limit=100');
 
 	// Handle errors
 	if($response['errno'] !== 0) {
-		if(ERROR_LOG) logger('cURL Error: IMDb id `'.$handle.'`. Error: '.$response['error']);
-		exit;
+		if(ERROR_LOG) logger('CURL: IMDb id `'.$handle.'`. Error: '.$response['error']);
+		$response_errors['curl'] = 'IMDb id `'.$handle.'`. Error: '.$response['error'].'.';
 	} 
 	
 	if($response['code'] !== 200) {
-		if(ERROR_LOG) logger('EZTV: Failed to fetch the feed for IMDb id `'.$handle.'`. Error: '.$response['code'].'.');
-		exit;
+		if(ERROR_LOG) logger('EZTV: Could not fetch feed for `'.$handle.'`. Error: '.$response['code'].'.');
+		$response_errors['feed_response'] = 'Could not fetch feed for `'.$handle.'`. Error: '.$response['code'].'.';
 	}
 
     // Decode JSON
     $json = json_decode($response['body'], true);
     if(!is_array($json) OR !isset($json['torrents'])) {
-		if(ERROR_LOG) logger('EZTV: Invalid json response from EZTV API for IMDb id `'.$handle.'`.');
-		exit;
+		if(ERROR_LOG) logger('EZTV: Invalid json for `'.$handle.'`.');
+		$response_errors['invalid_content'] = 'Invalid json for `'.$handle.'`.';
     }
 
 	// Bail if there are no torrents
     if($json["torrents_count"] == 0) {
-		if(ERROR_LOG) logger('EZTV: No torrents for IMDb id `'.$handle.'`.');
-		exit;
+		if(ERROR_LOG) logger('EZTV: No torrents for `'.$handle.'`.');
+		$response_errors['no_content'] = 'No torrents for `'.$handle.'`.';
     }
 	
-	$filtered = array();
-
-	// Get Channel meta information
-	preg_match('/^(.+?)\s[Ss]\d{2}(?:[Ee]\d{2})?/', sanitize($json['torrents'][0]['title']), $m);
-	$filtered['channel_name'] = $m[1];
-	$filtered['channel_url'] = "https://eztvx.to/search/".urlencode($handle);
-	$filtered['items'] = array();
-
-	// Loop through each item
-	foreach($json['torrents'] as $torrent) {
-		// Get the basic information
-		$hash = (isset($torrent['hash'])) ? sanitize((string)$torrent['hash']) : 0;
-		$title = (isset($torrent['title'])) ? sanitize((string)$torrent['title']) : '';
-		$url_magnet = (isset($torrent['magnet_url'])) ? sanitize((string)$torrent['magnet_url']) : '';
-		$published = (isset($torrent['date_released_unix'])) ? sanitize((int)$torrent['date_released_unix']) : null;
-
-		// Find additional information
-		$season = (isset($torrent['season'])) ? sanitize((int)$torrent['season']) : 0;
-		$episode = (isset($torrent['episode'])) ? sanitize((int)$torrent['episode']) : 0;
-		$thumbnail = (isset($torrent['small_screenshot'])) ? sanitize((string)$torrent['small_screenshot']) : '';
-		$seeders = (isset($torrent['seeds'])) ? sanitize((int)$torrent['seeds']) : 0;
-		$size = (isset($torrent['size_bytes'])) ? sanitize((int)$torrent['size_bytes']) : 0;
-		$filename = (isset($torrent['filename'])) ? sanitize((string)$torrent['filename']) : '';
-
-		// Ignore if title is missing
-		// Ignore if magnet link is missing
-		if(empty($title) OR empty($url_magnet)) {
-			continue;
-		}
-
-	    // Filter video quality
-		$pattern = implode('|', QUALITY_FILTER);
-	    if(!preg_match('/\b('.$pattern.')p\b/i', $filename)) {
-	        continue;
-	    }
+	if(empty($response_errors)) {
+		// Get Channel meta information
+		preg_match('/^(.+?)\s[Ss]\d{2}(?:[Ee]\d{2})?/', sanitize($json['torrents'][0]['title']), $m);
+		$filtered['channel_name'] = (strlen($m[1]) > 0) ? $m[1] : 'Temporary - '.$handle;
+		$filtered['channel_url'] = "https://eztvx.to/search/".urlencode($handle);
+		$filtered['items'] = array();
 	
-		// Only add unique torrents
-		if(!array_search($hash, array_column($filtered['items'], 'id'))) {
-			// Clean up season and episode number
-			if($season < 10) $season = '0'.$season;
-			if($episode < 10) $episode = '0'.$episode;
-
-			// Sort out the description/item content
-			$content = '';
-		    if(!empty($thumbnail)) {
-			    $content .= "<p><a href=\"".$url_magnet."\"><img src=\"".$thumbnail."\" /></a></p>";
+		// Loop through each item
+		foreach($json['torrents'] as $torrent) {
+			// Get the basic information
+			$hash = (isset($torrent['hash'])) ? sanitize((string)$torrent['hash']) : 0;
+			$title = (isset($torrent['title'])) ? sanitize((string)$torrent['title']) : '';
+			$url_magnet = (isset($torrent['magnet_url'])) ? sanitize((string)$torrent['magnet_url']) : '';
+			$published = (isset($torrent['date_released_unix'])) ? sanitize((int)$torrent['date_released_unix']) : null;
+	
+			// Find additional information
+			$season = (isset($torrent['season'])) ? sanitize((int)$torrent['season']) : 0;
+			$episode = (isset($torrent['episode'])) ? sanitize((int)$torrent['episode']) : 0;
+			$thumbnail = (isset($torrent['small_screenshot'])) ? sanitize((string)$torrent['small_screenshot']) : '';
+			$seeders = (isset($torrent['seeds'])) ? sanitize((int)$torrent['seeds']) : 0;
+			$size = (isset($torrent['size_bytes'])) ? sanitize((int)$torrent['size_bytes']) : 0;
+			$filename = (isset($torrent['filename'])) ? sanitize((string)$torrent['filename']) : '';
+	
+			// Ignore if title is missing
+			// Ignore if magnet link is missing
+			if(empty($title) OR empty($url_magnet)) {
+				continue;
 			}
-			$content .= "<p><strong>Seeds:</strong> ".$seeders."<br /><strong>Size:</strong> ".human_filesize($size)."<br /><strong>Magnet:</strong> <a href=\"".$url_magnet."\">".$filename."</a></p>";
-			$content .= "<p><strong>Links:</strong> <a href=\"https://www.imdb.com/title/".$handle."/\">IMDb page</a> / <a href=\"".$filtered['channel_url']."\" title=\"Watch out for redirects and popups!\">All EZTV magnets</a><br /><strong>Magnet Hash:</strong> ".$hash."</p>";
+	
+		    // Filter video quality
+			$pattern = implode('|', QUALITY_FILTER);
+		    if(!preg_match('/\b('.$pattern.')p\b/i', $filename)) {
+		        continue;
+		    }
+		
+			// Only add unique torrents
+			if(!array_search($hash, array_column($filtered['items'], 'id'))) {
+				// Clean up season and episode number
+				if($season < 10) $season = '0'.$season;
+				if($episode < 10) $episode = '0'.$episode;
+	
+				// Sort out the description/item content
+				$content = '';
+			    if(!empty($thumbnail)) {
+				    $content .= "<p><a href=\"".$url_magnet."\"><img src=\"".$thumbnail."\" /></a></p>";
+				}
+				$content .= "<p><strong>Seeds:</strong> ".$seeders."<br /><strong>Size:</strong> ".human_filesize($size)."<br /><strong>Magnet:</strong> <a href=\"".$url_magnet."\">".$filename."</a></p>";
+				$content .= "<p><strong>Links:</strong> <a href=\"https://www.imdb.com/title/".$handle."/\">IMDb page</a> / <a href=\"".$filtered['channel_url']."\" title=\"Watch out for redirects and popups!\">All EZTV magnets</a><br /><strong>Magnet Hash:</strong> ".$hash."</p>";
+	
+		        $filtered['items'][] = array(
+		            'title' => $title,
+		            'link' => $url_magnet,
+		            'date_released' => $published,
+		            'description' => $content
+		        );
+		    }
+	
+			unset($filename, $seeders, $season, $episode, $title, $thumbnail, $url_magnet, $hash, $published, $size, $content, $torrent);
+		}
+		
+		// Sort by date_released DESC */
+		usort($filtered['items'], fn($a, $b) => $b['date_released'] <=> $a['date_released']);
+	} else {
+		$content = "<p>Unfortunately something went wrong getting the feed. Usually this resolves itself within a few hours!<br /><small>If the issue persists after one or two days, check the config.php to try an alternate URL for EZTV.</small></p>";
+		$content .= "<p>";
+		foreach($response_errors as $key => $text) {
+			$content .= $key.": ".$text."</br>";
+		}
+		$content .= "</p>";
 
-	        $filtered['items'][] = array(
-	            'id' => $hash,
-	            'title' => $title,
-	            'link' => $url_magnet,
-	            'date_released' => $published,
-	            'description' => $content
-	        );
-	    }
-
-		unset($filename, $seeders, $season, $episode, $title, $thumbnail, $url_magnet, $hash, $published, $size, $content, $torrent);
+	    $filtered['items'][] = array(
+			'title' => 'Error! BeepBoop!',
+			'link' => '',
+			'date_released' => time(),
+			'description' => $content,
+			'thumbnail' => ''
+	    );
 	}
-	
-	// Sort by date_released DESC */
-	usort($filtered['items'], fn($a, $b) => $b['date_released'] <=> $a['date_released']);
-	
+
 	cache_set($handle, $filtered, CACHE_EZTV_PREFIX);
 }
 

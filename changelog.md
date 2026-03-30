@@ -4,7 +4,10 @@ Versioning is loose and lax, in fact there are no actual versions.
 But here is the list of changes made over time, sorted by 'release' date.
 
 ## March 29, 2026
+- New: Output errors as part of feed
 - New: Separate cleanup function (cache_delete()) for cache
+- Change: Improved handling when feed name and url are empty/missing
+- Change: Config descriptions for valious features
 - Change: Last build date for feeds now matches newest/latest item in the feed
 - Change: Improved error handling when fetching feeds
 - Fix: Youtube video publish date now processed as string, not an int

@@ -41,8 +41,9 @@ define('QUALITY_FILTER', array('720', '1080', '2160'));
 // Try: eztv1.xyz, eztv.wf, eztv.tf, eztv.yt
 define('EZTV_API_URL', 'https://eztvx.to/api/get-torrents');
 
-// Set a user-agent for gooseRSS to identify as. Usually the default works fine. Firefox is nice and neutral.
+// Set a user-agent for gooseRSS to identify as. 
 // The services you use prefer to deal with a browser, so we need to pretend to be a browser.
+// Goosle tries hard to look like Firefox so the default often works best. Other browsers may work, but Firefox is nice and neutral.
 define('USER_AGENT', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:142.0) Gecko/20100101 Firefox/142.0');
 
 // Where to keep the cache (without a trailing slash).
@@ -52,12 +53,13 @@ define('CACHE_DIR', '/cache');
 define('CACHE_YT_TTL', 21600); // Default: 21600 (6 hours). 
 define('CACHE_EZTV_TTL', 86400); // Default: 86400 (24 hours).
 
-// Cache file prefix. This is to help differentiate filenames and usually does not need to be changed.
+// Cache file prefix. This is to help differentiate filenames in the /cache/ folder and usually does not need to be changed.
 define('CACHE_YT_PREFIX', 'yt_'); 
-define('CACHE_EZTV_PREFIX', 'eztv_'); // Cache file prefix
+define('CACHE_EZTV_PREFIX', 'eztv_');
 
 // Log runs per feed into error.log or success.log?
-// Leaving this on may result in large log files over time.
+// Common feed errors are also visible as a feed item. The feed silently fails if the access hash or id parameter are missing.
+// Leaving this on may result in large log files over time. Simply deleting either log file 'resets' the log.
 // Set to true or false.
 define('SUCCESS_LOG', false);
 define('ERROR_LOG', false);

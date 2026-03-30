@@ -124,6 +124,7 @@ if(!$filtered) {
 				$content .= "<p><strong>Links:</strong> <a href=\"https://www.imdb.com/title/".$handle."/\">IMDb page</a> / <a href=\"".$filtered['channel_url']."\" title=\"Watch out for redirects and popups!\">All EZTV magnets</a><br /><strong>Magnet Hash:</strong> ".$hash."</p>";
 	
 		        $filtered['items'][] = array(
+		            'id' => $hash,
 		            'title' => $title,
 		            'link' => $url_magnet,
 		            'date_released' => $published,
@@ -145,6 +146,7 @@ if(!$filtered) {
 		$content .= "</p>";
 
 	    $filtered['items'][] = array(
+			'id' => '',
 			'title' => 'Error! BeepBoop!',
 			'link' => '',
 			'date_released' => time(),

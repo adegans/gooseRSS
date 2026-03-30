@@ -151,6 +151,7 @@ if(!$filtered) {
 				}
 	
 			    $filtered['items'][] = array(
+					'id' => $video_id,
 					'title' => $title,
 					'link' => $url_embed,
 					'date_released' => $published,
@@ -173,6 +174,7 @@ if(!$filtered) {
 		$content .= "</p>";
 
 	    $filtered['items'][] = array(
+			'id' => '',
 			'title' => 'Error',
 			'link' => '',
 			'date_released' => time(),

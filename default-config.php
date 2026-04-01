@@ -63,4 +63,8 @@ define('CACHE_EZTV_PREFIX', 'eztv_');
 // Set to true or false.
 define('SUCCESS_LOG', false);
 define('ERROR_LOG', false);
+
+// Output errors as feed items?
+// Set to true or false.
+define('ERROR_FEED', true);
 ?>

@@ -11,19 +11,33 @@
 --------------------------------------------------------------------------- */
 
 /* ------------------------------------------------------------------------ */
+/* MAKE SURE FOLDERS AND FILES ARE IN PLACE								 	*/
+/* ------------------------------------------------------------------------ */
+function check_config() {
+	$cache_folder = __DIR__ . CACHE_DIR;
+
+	if(!is_dir($cache_folder)) {
+		@mkdir($cache_folder, 0755, true);
+	}
+
+	$timerfile = $cache_folder.'/timer.tmp';
+	if(!is_file($timerfile)) {
+		@file_put_contents($timerfile, 0);
+	}
+}
+
+/* ------------------------------------------------------------------------ */
 /* CACHING																	*/
 /* ------------------------------------------------------------------------ */
 function cache_set($key, $data, $prefix) {
-	if(!is_dir(__DIR__ . CACHE_DIR)) {
-		@mkdir(__DIR__ . CACHE_DIR, 0755, true);
-	}
-	
-	$file = __DIR__ . CACHE_DIR . '/' . $prefix . md5($key) . '.cache';
+	$folder = __DIR__ . CACHE_DIR;
+	$file = $folder . '/' . $prefix . md5($key) . '.cache';
 	@file_put_contents($file, serialize($data));
 }
 
-function cache_get($key, $prefix, $ttl) {
-	$file = __DIR__ . CACHE_DIR . '/' . $prefix . md5($key) . '.cache';
+function cache_get($key, $prefix) {
+	$folder = __DIR__ . CACHE_DIR;
+	$file = $folder . '/' . $prefix . md5($key) . '.cache';
 
 	// If no file exists
 	if(!is_file($file)) {
@@ -33,36 +47,31 @@ function cache_get($key, $prefix, $ttl) {
 	return unserialize(file_get_contents($file));
 }
 
-function cache_delete($prefix, $ttl) {
-	$folder = __DIR__ . CACHE_DIR . '/';
-	$length = strlen($prefix);
+function cache_delete($ttl) {
+	$folder = __DIR__ . CACHE_DIR;
+	$timerfile = $folder . '/timer.tmp';
+	$timer = sanitize((int)file_get_contents($timerfile));
 	$now = time();
 
-	if(is_dir($folder)) {
-		$length = strlen($prefix);
+	if($timer < $now - 86400) {
+		if(is_dir($folder) AND ($handle = opendir($folder))) {
+		    // Loop through all files
+	        while(($file = readdir($handle)) !== false) {
+				// Only delete .cache files
+				if($file == '.' OR $file == '..' OR !is_file($folder.$file) OR substr($file, -6) != '.cache') {
+					continue;
+				}
 
-		$cachefile = __DIR__ . CACHE_DIR . '/timer.tmp';
-		$timer = (!is_file($cachefile)) ? 0 : file_get_contents($cachefile);
+				// Delete if expired (also deletes orphaned file as they expire naturally)
+				if(filemtime($folder.$file) < ($now - $ttl)) {
+					@unlink($folder.$file);
+				}
+	        }
+			
+	        closedir($handle);
+	    }
 
-		if($timer < ($now - $ttl)) {
-		    if($handle = opendir($folder)) {
-			    // Loop through all files
-		        while(($file = readdir($handle)) !== false) {
-					// Only delete cache files (*.cache)
-					$extension = pathinfo($file, PATHINFO_EXTENSION);					
-					if($file == '.' OR $file == '..' OR $extension != 'cache' OR substr($file, 0, $length) != $prefix) continue;
-	
-					// Delete if expired
-					if(filemtime($folder.$file) < ($now - $ttl)) {
-						@unlink($folder.$file);
-					}
-		        }
-				
-		        closedir($handle);
-		    }
-
-			@file_put_contents($cachefile, $now);
-		}		        
+		@file_put_contents($timerfile, $now);
 	}
 }
 
@@ -117,6 +126,7 @@ function human_timestamp($seconds) {
 	
 	return sprintf("%d:%02d", $minutes, $seconds); // M:SS
 }
+
 /* ------------------------------------------------------------------------ */
 /* LOG ERRORS AND RESULTS													*/
 /* ------------------------------------------------------------------------ */
@@ -174,9 +184,9 @@ function make_request($url) {
 
 	$response = array(
 		'code' => curl_getinfo($ch, CURLINFO_HTTP_CODE),
-		'error'     => curl_error($ch),
-		'errno'     => curl_errno($ch),
-		'body'      => $response
+		'error' => curl_error($ch),
+		'errno' => curl_errno($ch),
+		'body' => $response
 	);
 
 	curl_close($ch);
@@ -193,13 +203,13 @@ function get_youtube_channel_id($handle) {
 
 	// Handle errors
 	if($response['errno'] !== 0) {
-		if(ERROR_LOG) logger('cURL Error: Channel ID `@'.$handle.'`. Error: '.$response['error']);
-		exit;
+		if(ERROR_LOG) logger('CURL: Channel ID `'.$handle.'`. Error: '.$response['error'].'.');
+		return false;
 	} 
 	
 	if($response['code'] !== 200) {
-		if(ERROR_LOG) logger('YT: Could not access the URL for Channel `@'.$handle.'`. Error: '.$response['code'].'.');
-		exit;
+		if(ERROR_LOG) logger('YT: Could not fetch channel `'.$handle.'`. Error: '.$response['code'].'.');
+		return false;
 	}
 
 	/**

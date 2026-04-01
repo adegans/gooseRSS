@@ -3,6 +3,15 @@
 Versioning is loose and lax, in fact there are no actual versions.  
 But here is the list of changes made over time, sorted by 'release' date.
 
+## April 1, 2026
+- Update: Refined cache cleanup routine
+- New: Moved check if /cache exists into check_config()
+- New: Moved check if /cache/timer.tmp exists into check_config()
+- Change: Output errors as part of feed now an option in default-config.php
+- Fix: Cache delete timer
+- Fix: Empty channel_name when the feed has an error
+- Fix: Empty channel_url when the feed has an error
+
 ## March 29, 2026
 - Fix: Cache delete timer
 

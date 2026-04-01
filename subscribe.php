@@ -56,7 +56,7 @@ $current_url .= '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
 	<meta property="og:type" content="website" />
 	<meta property="og:locale" content="en_US" />
-	<meta property="og:url" content="<?php echo $current_url; ?>" />
+	<meta property="og:url" content="<?php echo MAIN_URL; ?>/subscribe.php" />
 	<meta property="og:site_name" content="GooseRSS - RSS Link Generator" />
 	<meta property="og:title" content="RSS Link Generator" />
 	<meta property="og:description" content="Generate Youtube and EZTV Rss feeds that you can subscribe to in a RSS reader." />

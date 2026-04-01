@@ -19,6 +19,7 @@ require_once(__DIR__ . '/functions.php');
 
 $access_key = isset($_GET['access']) ? sanitize($_GET['access']) : '';
 $handle = isset($_GET['id']) ? strtolower(sanitize($_GET['id'])) : '';
+$now = time();
 
 // Basic "security"
 if(empty($access_key) OR $access_key !== trim(ACCESS)) {
@@ -42,11 +43,21 @@ if(substr($handle, 0, 1) == "@") {
 	$handle = substr($handle, 1);
 }
 
-// Delete old cache files (from any channeL)
-cache_delete(CACHE_YT_PREFIX, CACHE_YT_TTL);
+// Make sure certain files and folders exist
+check_config();
+
+// Skip deleting caches during these hours so no errors occur from this temporary (almost daily) problem
+// Vaguely defined hours for when the YT feeds are likely unavailable
+$start = gmmktime(5, 0, 0, gmdate('n'), gmdate('j'), gmdate('Y')); // 5AM GMT/UTC
+$end = $start + 14400; // 4 hours
+
+if($now < $start OR $now > $end) {	
+	// Delete old cache files (from any feed)
+	cache_delete(CACHE_YT_TTL);
+}
 
 // Fetch from cache or YouTube
-$filtered = cache_get($handle, CACHE_YT_PREFIX, CACHE_YT_TTL);
+$filtered = cache_get($handle, CACHE_YT_PREFIX);
 
 if(!$filtered) {
 	$filtered = $response_errors = array();
@@ -57,8 +68,8 @@ if(!$filtered) {
 	}
 
 	if($filtered['channel_id'] === false) {
-		if(ERROR_LOG) logger('YT: Missing Channel ID for `@'.$handle.'`.');
-		$response_errors['id'] = 'Missing Channel ID for `@'.$handle.'`';
+		if(ERROR_LOG) logger('YT: Missing Channel ID `'.$handle.'`.');
+		if(ERROR_FEED) $response_errors['id'] = 'Missing Channel ID `'.$handle.'`';
 	}
 
 	// Fetch the XML content from YouTube
@@ -66,13 +77,13 @@ if(!$filtered) {
 
 	// Handle errors
 	if($response['errno'] !== 0) {
-		if(ERROR_LOG) logger('CURL: Channel ID `@'.$handle.'`. Error: '.$response['error'].'.');
-		$response_errors['curl'] = 'Channel ID `@'.$handle.'`. Error: '.$response['error'].'.';
+		if(ERROR_LOG) logger('CURL: Channel `'.$handle.'`. Error: '.$response['error'].'.');
+		if(ERROR_FEED) $response_errors['curl'] = 'Channel `'.$handle.'`. Error: '.$response['error'].'.';
 	} 
 	
 	if($response['code'] !== 200) {
-		if(ERROR_LOG) logger('YT: Could not fetch feed for `@'.$handle.'`. Error: '.$response['code'].'.');
-		$response_errors['feed_response'] = 'Could not fetch feed for `@'.$handle.'`. Error: '.$response['code'].'.';
+		if(ERROR_LOG) logger('YT: Could not fetch feed for channel `'.$handle.'`. Error: '.$response['code'].'.');
+		if(ERROR_FEED) $response_errors['feed_response'] = 'Could not fetch feed for channel `'.$handle.'`. Error: '.$response['code'].'.';
 	}
 
 	// Finally - Maybe some kind of error page?
@@ -80,8 +91,8 @@ if(!$filtered) {
 		preg_match('/<title>(.*?)<\/title>/si', $response['body'], $errors);
 		$error = (isset($errors[1])) ? $errors[1] : 'Unknown';
 
-		if(ERROR_LOG) logger('YT: Invalid XML for channel `@'.$handle.'`. Error: '.$error.'.');
-		$response_errors['invalid_content'] = 'Invalid XML for channel `@'.$handle.'`. Error: '.$error.'.';
+		if(ERROR_LOG) logger('YT: Invalid XML for channel `'.$handle.'`. Error: '.$error.'.');
+		if(ERROR_FEED) $response_errors['invalid_content'] = 'Invalid XML for channel `'.$handle.'`. Error: '.$error.'.';
 	}
 
 	if(empty($response_errors)) {
@@ -173,11 +184,13 @@ if(!$filtered) {
 		}
 		$content .= "</p>";
 
+		$filtered['channel_name'] = $handle;
+		$filtered['channel_url'] = "#";
 	    $filtered['items'][] = array(
 			'id' => '',
 			'title' => 'Error',
 			'link' => '',
-			'date_released' => time(),
+			'date_released' => $now,
 			'description' => $content,
 			'thumbnail' => ''
 	    );
@@ -191,7 +204,7 @@ if(!$filtered) {
 /* ------------------------------------------------------------------------ */
 $builddate = $filtered['items'][0]['date_released']; // Get date from newest item
 
-if(isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) AND strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= time()) {
+if(isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) AND strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $now) {
 	header('HTTP/1.1 304 Not Modified', true);
 	header('Cache-Control: max-age='.CACHE_YT_TTL.', private', true);
 	exit;

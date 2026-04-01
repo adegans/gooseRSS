@@ -19,6 +19,7 @@ require_once(__DIR__ . '/functions.php');
 
 $access_key = isset($_GET['access']) ? sanitize($_GET['access']) : '';
 $handle = isset($_GET['id']) ? strtolower(sanitize($_GET['id'])) : '';
+$now = time();
 
 // Basic "security"
 if(empty($access_key) OR $access_key !== trim(ACCESS)) {
@@ -37,11 +38,14 @@ if(substr($handle, 0, 2) != "tt") {
 	$handle = "tt".$handle;
 }
 
+// Make sure certain files and folders exist
+check_config();
+
 // Delete old cache files (from any tv show)
-cache_delete(CACHE_EZTV_PREFIX, CACHE_EZTV_TTL);
+cache_delete(CACHE_EZTV_TTL);
 
 // Fetch from cache or EZTV
-$filtered = cache_get($handle, CACHE_EZTV_PREFIX, CACHE_EZTV_TTL);
+$filtered = cache_get($handle, CACHE_EZTV_PREFIX);
 
 if(!$filtered) {
 	$filtered = $response_errors = array();
@@ -53,25 +57,25 @@ if(!$filtered) {
 	// Handle errors
 	if($response['errno'] !== 0) {
 		if(ERROR_LOG) logger('CURL: IMDb id `'.$handle.'`. Error: '.$response['error']);
-		$response_errors['curl'] = 'IMDb id `'.$handle.'`. Error: '.$response['error'].'.';
+		if(ERROR_FEED) $response_errors['curl'] = 'IMDb id `'.$handle.'`. Error: '.$response['error'].'.';
 	} 
 	
 	if($response['code'] !== 200) {
 		if(ERROR_LOG) logger('EZTV: Could not fetch feed for `'.$handle.'`. Error: '.$response['code'].'.');
-		$response_errors['feed_response'] = 'Could not fetch feed for `'.$handle.'`. Error: '.$response['code'].'.';
+		if(ERROR_FEED) $response_errors['feed_response'] = 'Could not fetch feed for `'.$handle.'`. Error: '.$response['code'].'.';
 	}
 
     // Decode JSON
     $json = json_decode($response['body'], true);
     if(!is_array($json) OR !isset($json['torrents'])) {
 		if(ERROR_LOG) logger('EZTV: Invalid json for `'.$handle.'`.');
-		$response_errors['invalid_content'] = 'Invalid json for `'.$handle.'`.';
+		if(ERROR_FEED) $response_errors['invalid_content'] = 'Invalid json for `'.$handle.'`.';
     }
 
 	// Bail if there are no torrents
     if($json["torrents_count"] == 0) {
 		if(ERROR_LOG) logger('EZTV: No torrents for `'.$handle.'`.');
-		$response_errors['no_content'] = 'No torrents for `'.$handle.'`.';
+		if(ERROR_FEED) $response_errors['no_content'] = 'No torrents for `'.$handle.'`.';
     }
 	
 	if(empty($response_errors)) {
@@ -149,7 +153,7 @@ if(!$filtered) {
 			'id' => '',
 			'title' => 'Error! BeepBoop!',
 			'link' => '',
-			'date_released' => time(),
+			'date_released' => $now,
 			'description' => $content,
 			'thumbnail' => ''
 	    );
@@ -163,7 +167,7 @@ if(!$filtered) {
 /* ------------------------------------------------------------------------ */
 $builddate = $filtered['items'][0]['date_released']; // Get date from newest item
 
-if(isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) AND strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= time()) {
+if(isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) AND strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $now) {
 	header('HTTP/1.1 304 Not Modified', true);
 	header('Cache-Control: max-age='.CACHE_EZTV_TTL.', private', true);
 	exit;

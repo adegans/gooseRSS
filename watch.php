@@ -26,10 +26,6 @@ if(is_array($channel)) {
 	if($key !== false) $video = $channel['items'][$key];
 }
 
-// Figure out the URL (for sharing this page)
-$current_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-$current_url .= '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-
 if(!$video) {
 	die("Please refresh your feeds and provide a valid Video ID.");
 }
@@ -49,7 +45,7 @@ if(!$video) {
 
 	<meta property="og:type" content="website" />
 	<meta property="og:locale" content="en_US" />
-	<meta property="og:url" content="<?php echo $current_url; ?>" />
+	<meta property="og:url" content="<?php echo MAIN_URL; ?>/watch.php?vid=<?php echo $video_id; ?>&ch=<?php echo $handle; ?>" />
 	<meta property="og:site_name" content="GooseRSS - Youtube Embeds" />
 	<meta property="og:title" content="Watch this embedded video:" />
 	<meta property="og:description" content="<?php echo $video['title']; ?>" />

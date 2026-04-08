@@ -49,13 +49,13 @@ if(!$video) {
 	<link rel="stylesheet" href="./assets/embed-simple.css">
 
 	<meta name="description" content="<?php echo $video['title']; ?> by <?php echo $channel['channel_name']; ?>" />
-	<meta name="generator" content="GooseRSS - Youtube Embeds" />
+	<meta name="generator" content="GooseRSS" />
 
 	<meta property="og:type" content="website" />
 	<meta property="og:locale" content="en_US" />
 	<meta property="og:url" content="<?php echo MAIN_URL; ?>/watch.php?vid=<?php echo $video_id; ?>&ch=<?php echo $handle; ?>" />
-	<meta property="og:site_name" content="GooseRSS - Youtube Embeds" />
-	<meta property="og:title" content="Watch this embedded video:" />
+	<meta property="og:site_name" content="GooseRSS" />
+	<meta property="og:title" content="Watch this video from '<?php echo $channel['channel_name']; ?>'" />
 	<meta property="og:description" content="<?php echo $video['title']; ?>" />
 	<?php
 	if(isset($video['thumbnail'])) {

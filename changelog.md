@@ -3,6 +3,10 @@
 Versioning is loose and lax, in fact there are no actual versions.  
 But here is the list of changes made over time, sorted by 'release' date.
 
+## April 7, 2026
+- Change: Improved compatibility with GooseTOR
+- Change: Better OpenGraph tag texts for watch.php and subscribe.php
+
 ## April 6, 2026
 - Fix: Consistent use trailing / for MAIN_URL
 - New: When adding a feed a welcome item is added as a placeholder

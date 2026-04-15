@@ -3,6 +3,9 @@
 Versioning is loose and lax, in fact there are no actual versions.  
 But here is the list of changes made over time, sorted by 'release' date.
 
+## April 15, 2026
+- Change: Softer theme for Subscribe and Watch page matching the GooseTOR dark theme
+
 ## April 7, 2026
 - Change: Improved compatibility with GooseTOR
 - Change: Better OpenGraph tag texts for watch.php and subscribe.php

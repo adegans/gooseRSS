@@ -132,18 +132,6 @@ function human_filesize($bytes, $dec = 2) {
     return sprintf("%.{$dec}f ", $bytes / pow(1024, $factor)) . @$size[$factor];
 }
 
-function human_timestamp($seconds) {
-	$hours = floor($seconds / 3600);
-	$minutes = floor(($seconds % 3600) / 60);
-	$seconds = $seconds % 60;
-	
-	if($hours > 0) {
-		return sprintf("%d:%02d:%02d", $hours, $minutes, $seconds); // H:MM:SS
-	}
-	
-	return sprintf("%d:%02d", $minutes, $seconds); // M:SS
-}
-
 /* ------------------------------------------------------------------------ */
 /* LOG ERRORS AND RESULTS													*/
 /* ------------------------------------------------------------------------ */
